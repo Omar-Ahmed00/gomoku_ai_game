@@ -1,7 +1,3 @@
-"""
-Gomoku AI Game - Main Launcher
-"""
-
 import tkinter as tk
 from ui.gui import ModernGomokuGUI
 

@@ -1,104 +1,123 @@
 # ai/minimax.py
 import math
 import time
-from ai.heuristics import heuristic1, heuristic2, EMPTY, AI, HUMAN
-TT = {}
+from ai.heuristics import evaluate, AI, HUMAN, EMPTY
 
-def board_to_key(board):
-    return ''.join(str(cell) for row in board.grid for cell in row)
+# Statistics global to track performance for the report
+STATS = {
+    "nodes_evaluated": 0,
+    "pruning_count": 0
+}
 
-def generate_moves_nearby(board, radius=3):
-    n = board.n
-    g = board.grid
-    moves = set()
-    any_piece = False
-    for r in range(n):
-        for c in range(n):
-            if g[r][c] != 0:
-                any_piece = True
-                for dr in range(-radius, radius+1):
-                    for dc in range(-radius, radius+1):
-                        nr, nc = r+dr, c+dc
-                        if 0 <= nr < n and 0 <= nc < n and g[nr][nc] == 0:
-                            moves.add((nr,nc))
-    if not any_piece:
-        return [(n//2, n//2)]
-    return list(moves)
-
-def order_moves(board, moves, player, mode):
+def order_moves(board, moves, player, heuristic_mode):
+    """
+    Optimization: Sort moves to check promising ones first.
+    This makes Alpha-Beta pruning significantly more effective.
+    """
     scored = []
-    for (r,c) in moves:
-        board.make_move(r,c, player)
-        if mode == 1:
-            s = heuristic1(board)
-        else:
-            s = heuristic2(board)
-        board.undo_move(r,c)
-        scored.append((s, (r,c)))
-    scored.sort(reverse=True, key=lambda x: x[0])
+    for r, c in moves:
+        board.grid[r][c] = player
+        # Use a quick evaluation (H1 is faster) for sorting
+        score = evaluate(board, 1) 
+        scored.append((score, (r, c)))
+        board.grid[r][c] = EMPTY
+    
+    # Sort: High score first for AI, Low score first for Human
+    scored.sort(key=lambda x: x[0], reverse=(player == AI))
     return [m for _, m in scored]
 
-def evaluate(board, mode, maximizing_player):
-    if mode == 1:
-        return heuristic1(board)
-    else:
-        return heuristic2(board)
+def gen_moves(board, radius=1):
+    """
+    Generates moves only around existing pieces to reduce search space.
+    """
+    n = board.n
+    grid = board.grid
+    relevant_moves = set()
+    has_pieces = False
+    
+    for r in range(n):
+        for c in range(n):
+            if grid[r][c] != EMPTY:
+                has_pieces = True
+                for dr in range(-radius, radius+1):
+                    for dc in range(-radius, radius+1):
+                        if dr == 0 and dc == 0: continue
+                        nr, nc = r + dr, c + dc
+                        if 0 <= nr < n and 0 <= nc < n and grid[nr][nc] == EMPTY:
+                            relevant_moves.add((nr, nc))
+                            
+    if not has_pieces:
+        return [(n//2, n//2)]
+        
+    return list(relevant_moves)
 
-def minimax(board, depth, alpha, beta, maximizing, mode, start_time=None, time_limit=None):
-    if start_time and time_limit and (time.time() - start_time) > time_limit:
-        return evaluate(board, mode, maximizing), None
+def minimax(board, depth, alpha, beta, maximizing, heuristic_mode, start_time, time_limit, use_pruning=True):
+    """
+    Minimax Algorithm with Optional Alpha-Beta Pruning.
+    
+    Args:
+        use_pruning (bool): If False, the algorithm acts as standard Minimax (for report comparison).
+    """
+    STATS["nodes_evaluated"] += 1
 
-    key = board_to_key(board)
-    if key in TT and TT[key]['depth'] >= depth:
-        return TT[key]['val'], TT[key]['move']
+    # 1. Time Check
+    if time.time() - start_time > time_limit:
+        return evaluate(board, heuristic_mode), None
 
-    if depth == 0 or board.check_winner(AI) or board.check_winner(HUMAN):
-        val = evaluate(board, mode, maximizing)
-        return val, None
+    # 2. Terminal Check (Win/Loss/Draw or Depth 0)
+    if board.check_winner(AI): return 100000000, None
+    if board.check_winner(HUMAN): return -100000000, None
+    if depth == 0:
+        return evaluate(board, heuristic_mode), None
 
-    player = AI if maximizing else HUMAN
-    moves = generate_moves_nearby(board)
-    if not moves:
-        return 0, None
+    # 3. Move Generation & Ordering
+    possible_moves = gen_moves(board)
+    if not possible_moves: return 0, None
 
-    moves = order_moves(board, moves, player, mode)
+    # Only order moves if we are pruning (sorting helps pruning, but adds overhead for pure Minimax)
+    if use_pruning:
+        possible_moves = order_moves(board, possible_moves, AI if maximizing else HUMAN, heuristic_mode)
 
-    best_move = None
+    best_move = possible_moves[0]
+
     if maximizing:
-        value = -math.inf
-        for (r,c) in moves:
-            board.make_move(r,c, player)
-            val, _ = minimax(board, depth-1, alpha, beta, False, mode, start_time, time_limit)
-            board.undo_move(r,c)
-            if val > value:
-                value = val
-                best_move = (r,c)
-            alpha = max(alpha, value)
-            if beta <= alpha:
-                break
+        max_eval = -math.inf
+        for r, c in possible_moves:
+            board.grid[r][c] = AI
+            eval_score, _ = minimax(board, depth - 1, alpha, beta, False, heuristic_mode, start_time, time_limit, use_pruning)
+            board.grid[r][c] = EMPTY
+
+            if eval_score > max_eval:
+                max_eval = eval_score
+                best_move = (r, c)
+            
+            # --- ALPHA-BETA PRUNING LOGIC ---
+            if use_pruning:
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    STATS["pruning_count"] += 1
+                    break 
+            # --------------------------------
+            
+        return max_eval, best_move
+
     else:
-        value = math.inf
-        for (r,c) in moves:
-            board.make_move(r,c, player)
-            val, _ = minimax(board, depth-1, alpha, beta, True, mode, start_time, time_limit)
-            board.undo_move(r,c)
-            if val < value:
-                value = val
-                best_move = (r,c)
-            beta = min(beta, value)
-            if beta <= alpha:
-                break
+        min_eval = math.inf
+        for r, c in possible_moves:
+            board.grid[r][c] = HUMAN
+            eval_score, _ = minimax(board, depth - 1, alpha, beta, True, heuristic_mode, start_time, time_limit, use_pruning)
+            board.grid[r][c] = EMPTY
 
-    TT[key] = {'val': value, 'move': best_move, 'depth': depth}
-    return value, best_move
+            if eval_score < min_eval:
+                min_eval = eval_score
+                best_move = (r, c)
 
-def iterative_deepening(board, max_depth, mode, time_limit=5.0):
-    start = time.time()
-    best = None
-    for d in range(1, max_depth+1):
-        val, move = minimax(board, d, -math.inf, math.inf, True, mode, start, time_limit)
-        if move is not None:
-            best = move
-        if time.time() - start > time_limit:
-            break
-    return best
+            # --- ALPHA-BETA PRUNING LOGIC ---
+            if use_pruning:
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    STATS["pruning_count"] += 1
+                    break
+            # --------------------------------
+            
+        return min_eval, best_move

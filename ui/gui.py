@@ -1,11 +1,11 @@
 """
-Modern Gomoku GUI with Fixed Board Drawing
-Author: [Team Name]
-Course: AI310 & CS361 - Helwan University
+Modern Gomoku GUI - Cleaned Version
+Removed hint features and heuristic controls
+Added Adaptive difficulty level
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, font
+from tkinter import ttk, messagebox
 import time
 from game.board import Board, AI, HUMAN
 from ai.ai_player import AIPlayer
@@ -195,28 +195,13 @@ class ModernGomokuGUI:
                 bg=THEME["bg"],
                 fg=THEME["fg"]).pack(anchor="w", padx=10, pady=5)
         
-        self.diff_var = tk.StringVar(value="medium")
+        self.diff_var = tk.StringVar(value="Medium")
         self.diff_combo = ttk.Combobox(settings_frame,
                                       textvariable=self.diff_var,
-                                      values=["easy", "medium", "hard", "expert"],
+                                      values=["Easy", "Medium", "Hard", "Adaptive"],
                                       width=20,
                                       state="readonly")
         self.diff_combo.pack(fill="x", padx=10, pady=(0, 10))
-        
-        # Heuristic
-        tk.Label(settings_frame,
-                text="AI Heuristic:",
-                font=("Segoe UI", 10),
-                bg=THEME["bg"],
-                fg=THEME["fg"]).pack(anchor="w", padx=10, pady=5)
-        
-        self.heur_var = tk.StringVar(value="Pattern")
-        self.heur_combo = ttk.Combobox(settings_frame,
-                                      textvariable=self.heur_var,
-                                      values=["Simple", "Pattern", "Advanced", "Dynamic"],
-                                      width=20,
-                                      state="readonly")
-        self.heur_combo.pack(fill="x", padx=10, pady=(0, 10))
         
         # First Player
         tk.Label(settings_frame,
@@ -247,7 +232,6 @@ class ModernGomokuGUI:
         buttons = [
             ("🆕 New Game", self.start_game, "#4ECDC4"),
             ("↩️ Undo Move", self.undo_move, "#45B7D1"),
-            ("💡 Show Hint", self.show_hint, "#96CEB4"),
             ("🔄 Restart Game", self.restart_game, "#FECA57"),
             ("❓ How to Play", self.show_help, "#FF9FF3")
         ]
@@ -485,10 +469,9 @@ class ModernGomokuGUI:
         reset_btn.pack(anchor="e", pady=(10, 0))
     
     def setup_shortcuts(self):
-        """Setup keyboard shortcuts"""
+        """Setup keyboard shortcuts - REMOVED Ctrl+H (hint)"""
         self.root.bind("<Control-n>", lambda e: self.start_game())
         self.root.bind("<Control-z>", lambda e: self.undo_move())
-        self.root.bind("<Control-h>", lambda e: self.show_hint())
         self.root.bind("<F1>", lambda e: self.show_help())
         self.root.bind("<Escape>", lambda e: self.root.quit())
     
@@ -534,7 +517,7 @@ class ModernGomokuGUI:
             self.draw_board()
     
     def draw_board(self):
-        """Draw the game board with current theme - FIXED VERSION"""
+        """Draw the game board with current theme"""
         if not self.game_active or not self.board:
             return
         
@@ -574,23 +557,23 @@ class ModernGomokuGUI:
                                    x, PADDING + board_pixel_size,
                                    fill=THEME["grid_color"], width=1)
         
-        # Draw coordinates - Show 1-based coordinates
+        # Draw coordinates
         for i in range(self.board.n):
-            # Column numbers (top) - show 1-15 not 0-14
+            # Column numbers (top)
             x = PADDING + i * cell_size
             self.canvas.create_text(x + cell_size // 2, PADDING - 20, 
-                                   text=str(i + 1),  # 1-based
+                                   text=str(i + 1),
                                    font=("Arial", 9),
                                    fill=THEME["fg"])
             
-            # Row numbers (left) - show 1-15 not 0-14
+            # Row numbers (left)
             y = PADDING + i * cell_size
             self.canvas.create_text(PADDING - 20, y + cell_size // 2, 
-                                   text=str(i + 1),  # 1-based
+                                   text=str(i + 1),
                                    font=("Arial", 9),
                                    fill=THEME["fg"])
         
-        # Draw pieces - Use entire grid
+        # Draw pieces
         for r in range(self.board.n):
             for c in range(self.board.n):
                 player = self.board.grid[r][c]
@@ -610,8 +593,7 @@ class ModernGomokuGUI:
                                        tags="highlight")
     
     def draw_piece(self, r, c, player, cell_size):
-        """Draw a game piece - FIXED to match grid coordinates"""
-        # Calculate position based on cell_size and coordinates
+        """Draw a game piece"""
         x = PADDING + c * cell_size + cell_size // 2
         y = PADDING + r * cell_size + cell_size // 2
         
@@ -624,7 +606,7 @@ class ModernGomokuGUI:
             color = THEME["human_color"]
             text = "H"
         
-        # Draw piece with shadow for 3D effect
+        # Draw piece with shadow
         shadow_offset = 2
         self.canvas.create_oval(x-radius+shadow_offset, y-radius+shadow_offset,
                                x+radius+shadow_offset, y+radius+shadow_offset,
@@ -649,11 +631,11 @@ class ModernGomokuGUI:
                                tags="piece")
     
     def handle_click(self, event):
-        """Handle mouse click on board - FIXED VERSION"""
+        """Handle mouse click on board"""
         if not self.game_active or not self.board or self.ai_thinking:
             return
         
-        # Calculate cell size - MUST match draw_board calculation
+        # Calculate cell size
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
         
@@ -674,17 +656,16 @@ class ModernGomokuGUI:
         c = click_x // cell_size
         r = click_y // cell_size
         
-        # Validate the position is within the visible grid
+        # Validate the position
         max_pixel = cell_size * (self.board.n - 1)
-        
-        # Allow clicks slightly outside the grid (for better UX)
         margin = cell_size // 2
+        
         if click_x < -margin or click_x > max_pixel + margin:
             return
         if click_y < -margin or click_y > max_pixel + margin:
             return
         
-        # Now clamp to valid grid positions
+        # Clamp to valid grid positions
         c = max(0, min(self.board.n - 1, c))
         r = max(0, min(self.board.n - 1, r))
         
@@ -785,21 +766,11 @@ class ModernGomokuGUI:
             # Get settings
             board_size = int(self.size_var.get())
             difficulty = self.diff_var.get()
-            heuristic = self.heur_var.get()
             first_player = self.player_var.get()
-            
-            # Map heuristic to mode
-            heuristic_map = {
-                "Simple": 1,
-                "Pattern": 2,
-                "Advanced": 3,
-                "Dynamic": 4
-            }
-            heuristic_mode = heuristic_map.get(heuristic, 2)
             
             # Initialize game
             self.board = Board(board_size)
-            self.ai_player = AIPlayer(difficulty=difficulty, heuristic=heuristic)
+            self.ai_player = AIPlayer(difficulty=difficulty, board_size=board_size)
             self.game_active = True
             self.ai_thinking = False
             
@@ -830,7 +801,6 @@ class ModernGomokuGUI:
             print(f"\n🎮 New game started:")
             print(f"  Board: {board_size}x{board_size}")
             print(f"  Difficulty: {difficulty}")
-            print(f"  Heuristic: {heuristic}")
             print(f"  First player: {first_player}")
             
         except Exception as e:
@@ -863,52 +833,8 @@ class ModernGomokuGUI:
         if messagebox.askyesno("Restart Game", "Are you sure you want to restart?"):
             self.start_game()
     
-    def show_hint(self):
-        """Show a hint for the next move"""
-        if not self.game_active or not self.board or self.board.current_player != HUMAN:
-            messagebox.showinfo("Hint", "It's not your turn!")
-            return
-        
-        # Create temporary AI for hint
-        temp_ai = AIPlayer(difficulty="medium", heuristic="Pattern")
-        move = temp_ai.get_best_move(self.board)
-        
-        if move:
-            r, c = move
-            messagebox.showinfo("Hint", f"Suggested move: ({r+1}, {c+1})")
-            self.highlight_move(r, c)
-        else:
-            messagebox.showinfo("Hint", "No good moves found!")
-    
-    def highlight_move(self, r, c):
-        """Highlight a suggested move"""
-        self.draw_board()
-        
-        canvas_width = self.canvas.winfo_width()
-        canvas_height = self.canvas.winfo_height()
-        
-        available_width = canvas_width - PADDING * 2
-        available_height = canvas_height - PADDING * 2
-        
-        cell_size = min(available_width // self.board.n, 
-                       available_height // self.board.n)
-        
-        if cell_size == 0:
-            return
-        
-        x = PADDING + c * cell_size
-        y = PADDING + r * cell_size
-        
-        self.canvas.create_oval(x-5, y-5,
-                               x+cell_size+5, y+cell_size+5,
-                               outline=THEME["highlight"],
-                               width=3,
-                               tags="hint")
-        
-        self.root.after(3000, lambda: self.canvas.delete("hint"))
-    
     def show_help(self):
-        """Show help dialog"""
+        """Show help dialog - REMOVED hint reference"""
         help_text = """
 🎮 HOW TO PLAY GOMOKU
 
@@ -920,14 +846,13 @@ CONTROLS:
 • Click on any empty intersection to place your stone
 • Ctrl+Z: Undo last move
 • Ctrl+N: New game
-• Ctrl+H: Show hint
 • F1: Show this help
 
 DIFFICULTY LEVELS:
-• Easy: Basic AI
-• Medium: Strategic AI  
-• Hard: Advanced AI
-• Expert: Very strong AI
+• Easy: Mostly random moves (80% random)
+• Medium: Balanced strategy (20% random)
+• Hard: Advanced strategy (no random moves)
+• Adaptive: Adjusts difficulty based on game state
 
 TIPS:
 1. Control the center of the board
@@ -955,8 +880,6 @@ GOOD LUCK! 🍀
         self.game_active = False
         self.thinking_label.config(text="")
         self.ai_thinking = False
-        
-        # Update stats
         if winner == "human":
             self.stats["human_wins"] += 1
         elif winner == "ai":
@@ -965,11 +888,7 @@ GOOD LUCK! 🍀
             self.stats["draws"] += 1
         
         self.update_stats_display()
-        
-        # Show message
         self.status_label.config(text=message)
-        
-        # Ask to play again
         self.root.after(1000, self.ask_play_again)
     
     def ask_play_again(self):
@@ -983,22 +902,13 @@ GOOD LUCK! 🍀
         if not self.board:
             return
         
-        # Current player
         player = "Human" if self.board.current_player == HUMAN else "AI"
         self.player_info.config(text=f"Current Player: {player}")
-        
-        # Move count
         self.move_count_info.config(text=f"Moves: {self.board.move_count}")
-        
-        # Game status
         status = "In Progress" if self.game_active else "Game Over"
         self.game_status_info.config(text=f"Status: {status}")
-        
-        # Board size
         self.board_info.config(text=f"Board: {self.board.n}×{self.board.n}")
-        
-        # Difficulty
-        self.diff_info.config(text=f"Difficulty: {self.diff_var.get().title()}")
+        self.diff_info.config(text=f"Difficulty: {self.diff_var.get()}")
     
     def update_stats_display(self):
         """Update statistics display"""

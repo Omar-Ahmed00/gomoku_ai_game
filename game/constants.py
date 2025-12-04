@@ -1,7 +1,5 @@
-
 BOARD_SIZES = [9, 11, 13, 15, 17, 19]
-DIFFICULTY_LEVELS = ["easy", "medium", "hard", "expert"]
-HEURISTIC_MODES = ["Simple", "Pattern", "Advanced", "Dynamic"]
+DIFFICULTY_LEVELS = ["Easy", "Medium", "Hard", "Adaptive"]
 
 # Players
 EMPTY = 0
@@ -12,7 +10,7 @@ HUMAN = -1
 HUMAN_VS_AI = "human_vs_ai"
 AI_VS_AI = "ai_vs_ai"
 
-# Colors for different themes (simplified)
+# Colors for different themes
 THEME_COLORS = {
     "dark": {
         "ai": "#FF6B6B",
