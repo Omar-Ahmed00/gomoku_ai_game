@@ -47,32 +47,33 @@ class AIPlayer:
 
     def get_best_move(self, board):
         n = board.n
-        
-        # Reset Stats for the Report
+
         STATS["nodes_evaluated"] = 0
         STATS["pruning_count"] = 0
         start_time = time.time()
-
-        # 1. Handle First Move (Center is optimal)
         if board.move_count == 0:
             return (n//2, n//2)
 
-        # 2. Determine Settings
+
         if self.diff == "adaptive":
             depth = self.adaptive_depth(board)
-            rand_chance = 0.1
+            rand_chance = 0.1  # Minimal randomness for realism
+            from ai.heuristics import evaluate
+            heuristic_score = evaluate(board, self.current_cfg["heuristic"])
+            if heuristic_score < -5000:
+                depth += 1
+            elif heuristic_score > 5000:
+                depth -= 1
+            depth = max(1, min(depth, 4))
+
         else:
             depth = self.current_cfg["depth"]
             rand_chance = self.current_cfg["rand"]
-
-        # 3. Easy Mode Randomness
         if random.random() < rand_chance:
             import ai.minimax as mm
             moves = mm.gen_moves(board)
-            if moves: return random.choice(moves)
-
-        # 4. Run Minimax / Alpha-Beta
-        # Note: We pass the flags for Heuristic Mode and Pruning here
+            if moves: 
+                return random.choice(moves)
         score, move = minimax(
             board,
             depth,
@@ -88,9 +89,9 @@ class AIPlayer:
         end_time = time.time()
         duration = end_time - start_time
         
-        # --- PRINT STATS FOR YOUR REPORT ---
         print(f"[{self.diff.upper()}] Move: {move}")
         print(f"   Time: {duration:.4f}s")
+        print(f"   Depth Used: {depth}")
         print(f"   Nodes: {STATS['nodes_evaluated']}")
         print(f"   Pruned: {STATS['pruning_count']} branches")
         print(f"   Heuristic: H{self.current_cfg['heuristic']}")
