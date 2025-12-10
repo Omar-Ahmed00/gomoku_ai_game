@@ -28,7 +28,7 @@ class AIPlayer:
             "hard": {
                 "depth": 3,      
                 "rand": 0.0,
-                "limit": 7.0,     
+                "limit": 3.0,     
                 "pruning": True,
                 "heuristic": 2,
             },
