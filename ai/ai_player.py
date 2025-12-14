@@ -1,6 +1,6 @@
 import random
 import time
-from ai.minimax import minimax, STATS, TT, KILLER_MOVES, gen_moves
+from ai.minimax import minimax, STATS, TT, KILLER_MOVES, gen_moves, minimax_without_tt
 from ai.heuristics import EMPTY, evaluate, AI, HUMAN
 
 class AIPlayer:
@@ -9,37 +9,63 @@ class AIPlayer:
         self.board_size = board_size
         self.heuristic_mode = 2
         self.use_pruning = True
-
         self.configs = {
             "easy": {
                 "depth": 1,
                 "rand": 0.6,
                 "limit": 1.0,
                 "pruning": True,
-                "heuristic": 1,
+                "heuristic": 1,     
             },
             "medium": {
                 "depth": 2,
                 "rand": 0.2,
                 "limit": 2.0,
                 "pruning": True,
-                "heuristic": 2,
+                "heuristic": 2,     
             },
             "hard": {
-                "depth": 3,      
+                "depth": 3,
                 "rand": 0.0,
-                "limit": 5.0,     
+                "limit": 5.0,
                 "pruning": True,
-                "heuristic": 2,
+                "heuristic": 2,   
             },
             "adaptive": {
                 "dynamic": True,
                 "limit": 5.0,
                 "pruning": True,
-                "heuristic": 2,
+                "heuristic": 2,      
+            },
+            "minimax_only": {
+                "depth": 2,
+                "rand": 0.0,
+                "limit": 2.0,
+                "pruning": False,   
+                "heuristic": 0,      
+            },
+            "alpha_beta_only": {
+                "depth": 2,
+                "rand": 0.0,
+                "limit": 2.0,
+                "pruning": True,     
+                "heuristic": 0,      
+            },
+            "h1_only": {
+                "depth": 2,
+                "rand": 0.0,
+                "limit": 2.0,
+                "pruning": True,     
+                "heuristic": 1,      
+            },
+            "h2_only": {
+                "depth": 2,
+                "rand": 0.0,
+                "limit": 2.0,
+                "pruning": True,   
+                "heuristic": 2,      
             },
         }
-
         self.current_cfg = self.configs[self.diff]
 
     def adaptive_depth(self, board):
@@ -127,8 +153,9 @@ class AIPlayer:
         n = board.n
         STATS["nodes_evaluated"] = 0
         STATS["pruning_count"] = 0
-        TT.clear()
-        KILLER_MOVES.clear()
+        if self.diff != "minimax_only":
+            TT.clear()
+            KILLER_MOVES.clear()
 
         start = time.time()
         if board.move_count == 0:
@@ -176,17 +203,34 @@ class AIPlayer:
                 f"Pruned={STATS['pruning_count']}"
             )
             return move
-        score, move = minimax(
-            board,
-            depth,
-            -float("inf"),
-            float("inf"),
-            True,
-            self.current_cfg["heuristic"],
-            start,
-            self.current_cfg["limit"],
-            use_pruning=self.current_cfg["pruning"],
-        )
+        
+        if self.diff == "minimax_only":
+            TT.clear()
+            KILLER_MOVES.clear()
+            score, move = minimax_without_tt(
+                board,
+                depth,
+                -float("inf"),
+                float("inf"),
+                True,
+                self.current_cfg["heuristic"],
+                start,
+                self.current_cfg["limit"],
+                use_pruning=self.current_cfg["pruning"],
+            )
+        else:
+            score, move = minimax(
+                board,
+                depth,
+                -float("inf"),
+                float("inf"),
+                True,
+                self.current_cfg["heuristic"],
+                start,
+                self.current_cfg["limit"],
+                use_pruning=self.current_cfg["pruning"],
+            )
+        
         duration = time.time() - start
         print(
             f"[{self.diff.upper()}] Move={move} Depth={depth} "

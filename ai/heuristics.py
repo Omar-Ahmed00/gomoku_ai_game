@@ -18,10 +18,12 @@ PATTERN_SCORES = {
 }
 
 def evaluate(board, mode: int):
-    if mode == 1:
+    if mode == 0:
+        return simple_center_bias(board)
+    elif mode == 1:
         return heuristic_1_simple(board)
-    return heuristic_2_advanced(board)
-
+    else:
+        return heuristic_2_advanced(board)
 def heuristic_1_simple(board):
     score = 0
     n = board.n
@@ -134,3 +136,16 @@ def eval_lines(board, player):
                 total += base
 
     return total
+def simple_center_bias(board):
+    score = 0
+    n = board.n
+    center = n // 2
+
+    for r in range(n):
+        for c in range(n):
+            if board.grid[r][c] == AI:  
+                score += 5 - max(abs(r - center), abs(c - center))
+            elif board.grid[r][c] == HUMAN:  
+                score -= 5 - max(abs(r - center), abs(c - center))
+
+    return score

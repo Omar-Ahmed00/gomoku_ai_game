@@ -6,7 +6,6 @@ STATS = {
     "nodes_evaluated": 0,
     "pruning_count": 0
 }
-
 TT = {}
 KILLER_MOVES = {}
 
@@ -102,8 +101,8 @@ def minimax(board, depth, alpha, beta, maximizing, heuristic_mode, start_time, t
 
     if use_pruning:
         moves = order_moves(board, moves, AI if maximizing else HUMAN, heuristic_mode, depth)
-
-    best_move = moves[0]
+    
+    best_move = moves[0] if moves else None
 
     if maximizing:
         max_eval = -math.inf
@@ -126,7 +125,7 @@ def minimax(board, depth, alpha, beta, maximizing, heuristic_mode, start_time, t
                 max_eval = eval_score
                 best_move = (r, c)
 
-            if use_pruning:
+            if use_pruning: 
                 alpha = max(alpha, eval_score)
                 if beta <= alpha:
                     km = KILLER_MOVES.setdefault(depth, set())
@@ -158,7 +157,7 @@ def minimax(board, depth, alpha, beta, maximizing, heuristic_mode, start_time, t
                 min_eval = eval_score
                 best_move = (r, c)
 
-            if use_pruning:
+            if use_pruning:  
                 beta = min(beta, eval_score)
                 if beta <= alpha:
                     km = KILLER_MOVES.setdefault(depth, set())
@@ -168,3 +167,86 @@ def minimax(board, depth, alpha, beta, maximizing, heuristic_mode, start_time, t
 
         TT[key] = (min_eval, best_move)
         return TT[key]
+    
+def minimax_without_tt(board, depth, alpha, beta, maximizing, heuristic_mode, start_time, time_limit, use_pruning=True):
+    STATS["nodes_evaluated"] += 1
+
+    if time.time() - start_time > time_limit:
+        val = evaluate(board, heuristic_mode)
+        return (val, None)
+
+    if board.check_winner(AI):
+        return (100000000, None)
+    if board.check_winner(HUMAN):
+        return (-100000000, None)
+
+    if board.is_game_over():
+        return (0, None)
+
+    if depth == 0:
+        val = evaluate(board, heuristic_mode)
+        return (val, None)
+
+    moves = gen_moves(board)
+    if not moves:
+        return (0, None)
+
+    best_move = moves[0] if moves else None
+
+    if maximizing:
+        max_eval = -math.inf
+        for r, c in moves:
+            board.grid[r][c] = AI
+            eval_score, _ = minimax_without_tt(
+                board,
+                depth - 1,
+                alpha,
+                beta,
+                False,
+                heuristic_mode,
+                start_time,
+                time_limit,
+                use_pruning,
+            )
+            board.grid[r][c] = EMPTY
+
+            if eval_score > max_eval:
+                max_eval = eval_score
+                best_move = (r, c)
+
+            if use_pruning:
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    STATS["pruning_count"] += 1
+                    break
+
+        return (max_eval, best_move)
+
+    else:
+        min_eval = math.inf
+        for r, c in moves:
+            board.grid[r][c] = HUMAN
+            eval_score, _ = minimax_without_tt(
+                board,
+                depth - 1,
+                alpha,
+                beta,
+                True,
+                heuristic_mode,
+                start_time,
+                time_limit,
+                use_pruning,
+            )
+            board.grid[r][c] = EMPTY
+
+            if eval_score < min_eval:
+                min_eval = eval_score
+                best_move = (r, c)
+
+            if use_pruning:
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    STATS["pruning_count"] += 1
+                    break
+
+        return (min_eval, best_move)

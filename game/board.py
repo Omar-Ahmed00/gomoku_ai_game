@@ -1,26 +1,13 @@
-"""
-Board class for Gomoku game with enhanced features
-Author: [Your Name/Team]
-"""
-
 EMPTY = 0
 AI = 1
 HUMAN = -1
 
 class Board:
     def __init__(self, n=15):
-        """
-        Initialize Gomoku board
-        
-        Args:
-            n: board size (n x n)
-        """
         self.n = n
         self.grid = [[EMPTY for _ in range(n)] for _ in range(n)]
         self.move_history = []  # Track moves for undo/redo
         self.current_player = HUMAN  # Human starts first
-        
-        # Pre-calculate directions for winner checking
         self.directions = [
             (1, 0),   # vertical
             (0, 1),   # horizontal
@@ -28,22 +15,10 @@ class Board:
             (1, -1)   # diagonal /
         ]
         
-        # Statistics
         self.move_count = 0
         self.last_move = None
     
     def make_move(self, r, c, player):
-        """
-        Place a piece on the board
-        
-        Args:
-            r: row (0-indexed)
-            c: column (0-indexed)
-            player: AI (1) or HUMAN (-1)
-        
-        Returns:
-            bool: True if move was valid and made
-        """
         if not self.is_valid_move(r, c):
             return False
         
@@ -56,15 +31,6 @@ class Board:
         return True
     
     def undo_move(self, r=None, c=None):
-        """
-        Undo the last move
-        
-        Args:
-            r, c: specific position to undo (optional)
-        
-        Returns:
-            bool: True if undo was successful
-        """
         if not self.move_history:
             return False
         
@@ -106,15 +72,6 @@ class Board:
                 self.grid[r][c] == EMPTY)
     
     def check_winner(self, player):
-        """
-        Check if specified player has won
-        
-        Args:
-            player: AI (1) or HUMAN (-1)
-        
-        Returns:
-            bool: True if player has won
-        """
         g = self.grid
         
         for r in range(self.n):
@@ -161,16 +118,7 @@ class Board:
         
         # Check for draw (board full)
         return all(cell != EMPTY for row in self.grid for cell in row)
-    
     def get_moves(self):
-        """
-        Get all possible moves
-        
-        Returns:
-            list: [(row, col), ...] of empty cells
-        """
-        # If there are existing pieces, only consider adjacent moves
-        # for better performance (Gomoku is usually played locally)
         moves = []
         
         if self.move_count == 0:
@@ -181,7 +129,6 @@ class Board:
                     if self.is_valid_move(r, c):
                         moves.append((r, c))
             return moves
-        
         # Get moves adjacent to existing pieces
         visited = set()
         for r in range(self.n):
@@ -240,10 +187,6 @@ class Board:
         return new_board
     
     def get_score_estimate(self, player):
-        """
-        Quick score estimate for move ordering
-        Simple count of pieces with center bonus
-        """
         score = 0
         center = self.n // 2
         
