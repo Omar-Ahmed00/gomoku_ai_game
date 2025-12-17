@@ -97,3 +97,7 @@ class AIPlayer:
         
         # Return top candidates only
         return [move for move, _ in scored[:15]]
+    
+
+    ###############
+    ##############
